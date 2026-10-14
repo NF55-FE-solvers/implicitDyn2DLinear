@@ -1,0 +1,9 @@
+# folders
+EigenLib/
+build/
+.vscode
+
+# file types
+*.vtk
+MESH/*.dat
+!MESH/SETS/*.dat
