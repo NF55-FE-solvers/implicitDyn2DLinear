@@ -1,16 +1,18 @@
-#ifndef EL_STIFFNESS_MATRIX_H
-#define EL_STIFFNESS_MATRIX_H
+#ifndef EL_MATRICES_H
+#define EL_MATRICES_H
 
 #include <array>
 #include "Eigen/Core"
 #include "settings.h"
 #include "material.h"
 
-namespace StiffMat{
-    using KelEigen = Eigen::Matrix<Settings::precision,Settings::nDofEl
-        ,Settings::nDofEl,Eigen::RowMajor>;
+namespace kmMat{
+    using KMelEigen = Eigen::Matrix<Settings::precision,Settings::nDofEl
+        ,Settings::nDofEl>;
     using NodesCoordEigen = Eigen::Matrix<Settings::precision
         ,Settings::nNodesEl,Settings::dofNode>;
+    using NEigen = Eigen::Matrix<Settings::precision,Settings::dofNode
+        ,Settings::nDofEl>;
     using dNEigen = Eigen::Matrix<Settings::precision,Settings::nNodesEl
         ,Settings::nDofEl>;
     using invJEigen = Eigen::Matrix<Settings::precision,Settings::nNodesEl
@@ -27,8 +29,8 @@ namespace StiffMat{
         {0.0, 1.0, 1.0, 0.0}
     };
 
-    void computeKel(const NodesCoordEigen& coords, dNEigen& dN, invJEigen& invJ
-        , BEigen& bEl, KelEigen& kEl);
+    void computeElKM(const NodesCoordEigen& coords, NEigen& N, dNEigen& dN
+        , invJEigen& invJ, BEigen& bEl, KMelEigen& kEl, KMelEigen& mEl);
 }
 
 

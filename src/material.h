@@ -6,6 +6,7 @@
 
 namespace Material{
 
+    constexpr const Settings::precision rho {7.8e-9}; // Elements/part density
     constexpr const Settings::precision t {2.0}; // Elements/part thickness
     constexpr const Settings::precision E {200000.0}; // Young's modulus
     constexpr const Settings::precision nu {0.33}; // Poisson's ratio

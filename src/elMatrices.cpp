@@ -1,19 +1,25 @@
-#include "elStiffnessMatrix.h"
+#include "elMatrices.h"
 
-namespace StiffMat{
-    void computeKel(const NodesCoordEigen& coords, dNEigen& dN, invJEigen& invJ
-        , BEigen& bEl, KelEigen& kEl)
+namespace kmMat{
+    void computeElKM(const NodesCoordEigen& coords, NEigen& N, dNEigen& dN
+        , invJEigen& invJ, BEigen& bEl, KMelEigen& kEl, KMelEigen& mEl)
     {
         kEl.setZero();
+        mEl.setZero();
         Settings::precision dxdxi   {};
         Settings::precision dydxi   {};
         Settings::precision dxdeta  {};
         Settings::precision dydeta  {};
         Settings::precision detJ    {};
         Settings::precision invDetJ {};
-        Settings::precision scalarValue {};
+        Settings::precision scalarValueK {};
+        Settings::precision scalarValueM {};
         for (const Settings::precision xi : gaussianPts){
             for (const Settings::precision eta : gaussianPts){
+                N << (1.0-xi)*(1.0-eta),0.0,(1.0+xi)*(1.0-eta),0.0
+                    ,(1.0+xi)*(1.0+eta),0.0,(1.0-xi)*(1+eta),0.0
+                    ,0.0,(1.0-xi)*(1.0-eta),0.0,(1.0+xi)*(1.0-eta)
+                    ,0.0,(1.0+xi)*(1.0+eta),0.0,(1.0-xi)*(1+eta);
                 dN <<(-1.0+eta),0.0,(1.0-eta),0.0,(1.0+eta),0.0,(-1.0-eta),0.0,
                     (-1.0+xi),0.0,(-1.0-xi),0.0,(1.0+xi),0.0,(1.0-xi),0.0,
                     0.0,(-1.0+eta),0.0,(1.0-eta),0.0,(1.0+eta),0.0,(-1.0-eta),
@@ -35,9 +41,11 @@ namespace StiffMat{
                         0, 0, -dxdeta, dxdxi;
                 invJ *= invDetJ;
                 bEl.noalias() = arrangeMat * invJ * dN;
-                scalarValue = Material::t*detJ; // Gauss weights omitted (=1)
-                kEl.noalias() += scalarValue
+                scalarValueK = Material::t*detJ; // Gauss weights omitted (=1)
+                scalarValueM = Material::t*detJ*Material::rho; // same here
+                kEl.noalias() += scalarValueK
                     *(bEl.transpose() * Material::C * bEl);
+                mEl.noalias() += scalarValueM * (N.transpose() * N);
             }
         }
     }

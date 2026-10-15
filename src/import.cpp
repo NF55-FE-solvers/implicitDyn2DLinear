@@ -7,8 +7,11 @@ void importMesh(Mesh& mesh, Bc& bc){
         << " files are supported, \nrename these with the name of the program "
         << "(Abaqus.inp | SALOME.dat)\n\n";
     
-    std::cout << "Make sure to execute program in folder containing main.cpp!"
-        << "\n\n";
+    // checking current working directory against expected one
+    Settings::fPath cwd {std::filesystem::current_path().filename()};
+    if (cwd != Settings::expectedRootProj){
+        throw "Current Working Directory different from expected one (see settings), change it accordingly.";
+    }
     
     constexpr std::array<const char*,2> allowedMeshFiles {
         {"./MESH/Abaqus.inp", "./MESH/SALOME.dat"}

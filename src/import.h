@@ -6,6 +6,7 @@
 #include <sstream>
 #include <array>
 #include <vector>
+#include <filesystem>
 #include "Eigen/Core"
 #include "Mesh.h"
 #include "settings.h"

@@ -1,9 +1,10 @@
 #include "Bc.h"
 
-void Bc::setBc(Eigen::Matrix<Settings::precision, Eigen::Dynamic, 1uz>& disp
+void Bc::setBcInit(Eigen::Matrix<Settings::precision, Eigen::Dynamic, 1uz>& disp
     ,Eigen::Matrix<Settings::precision, Eigen::Dynamic, 1uz>& force) const
 {
-    std::cout << "\nEmbedding boundary conditions in the equations...";
+    std::cout << "\nEmbedding boundary conditions @t=" << Settings::t0 
+        << "s ...\n";
 
     // PAY ATTENTION NOT TO DO INTEGER DIVISION (e.g. 1000/3 = 333 not 333.333)
     // as the .size() of the BC/load vectors is an integral type
@@ -15,11 +16,9 @@ void Bc::setBc(Eigen::Matrix<Settings::precision, Eigen::Dynamic, 1uz>& disp
     // setting Fx:
     force(bcs[Fx]).setConstant(0.0);
     // setting Fy:
-    force(bcs[Fy]).setConstant(-20.0/bcs[Fy].size());
+    force(bcs[Fy]).setConstant(0.0);
 
     // same can be done for any other bc...
-
-    std::cout << "Done!\n\n";
 }
 
 void Bc::extractBCAbaqus(){

@@ -28,7 +28,7 @@ public:
     void extractBCSalome();
     void extractBCAbaqus();
 
-    void setBc(Eigen::Matrix<Settings::precision, Eigen::Dynamic, 1uz>& disp
+    void setBcInit(Eigen::Matrix<Settings::precision, Eigen::Dynamic, 1uz>& disp
         ,Eigen::Matrix<Settings::precision, Eigen::Dynamic, 1uz>& force) const;
 };
 
