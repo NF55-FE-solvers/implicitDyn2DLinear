@@ -1,7 +1,6 @@
 #include "Bc.h"
 
-void Bc::setBcInit(Eigen::Matrix<Settings::precision, Eigen::Dynamic, 1uz>& disp
-    ,Eigen::Matrix<Settings::precision, Eigen::Dynamic, 1uz>& force) const
+void Bc::setBcInit(Bc::ndofVectf& disp, Bc::ndofVectf& force) const
 {
     std::cout << "\nEmbedding boundary conditions @t=" << Settings::t0 
         << "s ...\n";
@@ -19,6 +18,62 @@ void Bc::setBcInit(Eigen::Matrix<Settings::precision, Eigen::Dynamic, 1uz>& disp
     force(bcs[Fy]).setConstant(0.0);
 
     // same can be done for any other bc...
+}
+
+void Bc::setBcTimeDependent(Bc::ndofVectf& dispNewOrForce
+    , const Bc::ndofVecti& mapDof, const Settings::precision time
+    , const int mapDofBlockSize)
+{
+    // creation of custom amplitude
+    constexpr const Settings::precision FAmp {-20.0};
+    Settings::precision Fcurrent {FAmp*time/(Settings::tFinal-Settings::t0)}; 
+    
+    // use a bc or alternatively create one only for the time dependent bcs
+    const auto chosenBc {Fy};
+
+    if (bcs[chosenBc].empty()) throw "The time dependent boundary condition selected is empty - Bc.cpp";
+
+    // making sure the elements are sorted (see comments below)
+    using sizT = std::size_t;
+    if (bcs[chosenBc].size() > 1){
+        bool isSorted {true};
+        for (sizT i=0uz; i<(bcs[chosenBc].size()-1uz); ++i){
+            if (bcs[chosenBc][i] > bcs[chosenBc][i+1uz]){
+                isSorted = false;
+                break;
+            }
+        }
+        if (!isSorted){
+            std::sort(bcs[chosenBc].begin(), bcs[chosenBc].end());
+        }
+    }
+
+    // here using a more "complex" algorithm, but should be *faster than: 
+    // force(mapDof) = force; 
+    // force(bcs[chosenBc]) = Fcurrent; 
+    // force = force(mapDof);
+    // *if the number of dof interested by the time dep. bc are a small part of
+    // total dof.
+    int indx2findBc {0};
+    // exploiting the fact that mapDof is sorted in blocks
+    int startIndxMap {bcs[chosenBc][indx2findBc] 
+        - mapDof.head(mapDofBlockSize)(0)};
+    for (int indx {startIndxMap}; indx>=0; --indx){
+        if (mapDof(indx) == bcs[chosenBc][indx2findBc]){
+            dispNewOrForce(indx) = Fcurrent;
+            startIndxMap = indx + 1;
+            ++indx2findBc;
+            break;
+        }else if (indx==0) throw "ID/index of time dependent bc couldn't be found in the specified block of mapDof - Bc.cpp";
+    }
+    // now continuing with the rest of indices
+    for (int indx {startIndxMap}; indx<mapDofBlockSize; ++indx){
+        if (indx2findBc >= static_cast<int>(bcs[chosenBc].size())) break;
+        if (mapDof(indx) == bcs[chosenBc][indx2findBc]){
+            dispNewOrForce(indx) = Fcurrent;
+            ++indx2findBc;
+        }
+    }
 }
 
 void Bc::extractBCAbaqus(){

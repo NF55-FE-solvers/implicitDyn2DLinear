@@ -6,12 +6,16 @@
 #include <iostream>
 #include <fstream>
 #include <sstream>
+#include <algorithm>
 #include "Eigen/Core"
 #include "settings.h"
 
 class Bc
 {
 private:
+    using ndofVectf = Eigen::Vector<Settings::precision,Eigen::Dynamic>;
+    using ndofVecti = Eigen::Vector<int, Eigen::Dynamic>;
+
     enum BCnames : std::size_t{
         BCx,
         BCy,
@@ -28,8 +32,10 @@ public:
     void extractBCSalome();
     void extractBCAbaqus();
 
-    void setBcInit(Eigen::Matrix<Settings::precision, Eigen::Dynamic, 1uz>& disp
-        ,Eigen::Matrix<Settings::precision, Eigen::Dynamic, 1uz>& force) const;
+    void setBcInit(ndofVectf& disp, ndofVectf& force) const;
+    
+    void setBcTimeDependent(ndofVectf& dispNewOrForce, const ndofVecti& mapDof
+        , const Settings::precision time, const int mapDofBlockSize);
 };
 
 #endif

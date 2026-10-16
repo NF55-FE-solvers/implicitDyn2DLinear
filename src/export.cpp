@@ -1,94 +1,16 @@
 #include "export.h"
 
 namespace Export{
-    void exportResultsASCII(const Mesh& mesh, const DispEigen& disp)
+    void exportResultsBinary(const Mesh& mesh, const DispEigen& disp
+        , const int counterVTK, const Settings::precision time)
     {
-        std::cout << "Writing ./'VTK RESULTS'/results.vtk to visualize the "
-            << "output fields (UNAVERAGED) in Paraview...";
-        std::ofstream resultsFile {"./VTK RESULTS/results.vtk"};
-        if (!resultsFile){
-            throw "Unable to open ./'VTK RESULTS'/results.vtk - export.cpp";
-        }
-        std::ios_base::sync_with_stdio(false); // de-sync with C streams
+        using namespace std::string_literals;
+        std::string fileName {""s};
+        generateFileName(fileName, counterVTK);
+        std::string resultsPath {"./VTK RESULTS/"s};
+        resultsPath.append(fileName);
 
-        resultsFile << "# vtk DataFile Version 3.0\nFEA Unaveraged\nASCII\n"
-            << "DATASET UNSTRUCTURED_GRID\n\n";
-        resultsFile << "POINTS " << mesh.nElements*4 << " float\n";
-        Eigen::IOFormat coordsFormat;
-        if (Settings::fullPrecisionASCIIWriting){
-            coordsFormat = {Eigen::FullPrecision, Eigen::DontAlignCols, " "
-                , "\n", "", " 0.0"};
-        } else{
-            coordsFormat = {Eigen::StreamPrecision, Eigen::DontAlignCols, " "
-                , "\n", "", " 0.0"};
-        }
-        Eigen::Vector<int,Eigen::Dynamic> flattenedNodesIDEl = mesh.elements
-            .reshaped<Eigen::RowMajor>();
-        resultsFile << (mesh.nodes(flattenedNodesIDEl,Eigen::placeholders::all))
-            .format(coordsFormat) << '\n';
-
-        resultsFile << "\nCELLS " << mesh.nElements << ' ' << mesh.nElements*5 
-            << "\n";
-        Eigen::IOFormat cellsNodesFormat {Eigen::StreamPrecision
-            ,Eigen::DontAlignCols, " ", "\n", "4 "};
-        Eigen::Vector<int,Eigen::Dynamic> tempElIndx = Eigen::Vector<int
-            ,Eigen::Dynamic>::LinSpaced(mesh.nElements*Settings::nNodesEl, 0
-            , mesh.nElements*Settings::nNodesEl-1);
-        Eigen::Matrix<int,Eigen::Dynamic,Settings::nNodesEl> reshapedTempElIndx 
-            = tempElIndx.reshaped<Eigen::RowMajor>(Eigen::AutoSize,Settings::
-            nNodesEl);
-        resultsFile << reshapedTempElIndx.format(cellsNodesFormat) << '\n';
-
-        resultsFile << "\nCELL_TYPES " << mesh.nElements << '\n';
-        Eigen::IOFormat cellTypeFormat {Eigen::StreamPrecision
-            , Eigen::DontAlignCols, "", "\n"};
-        Eigen::Vector<int,Eigen::Dynamic> tempCellType = Eigen::Vector<int
-            ,Eigen::Dynamic>::Constant(mesh.nElements, 9);
-        resultsFile << tempCellType.format(cellTypeFormat) << '\n';
-
-        resultsFile << "\nPOINT_DATA " << mesh.nElements*4 << '\n';
-        resultsFile << "VECTORS Displacement float\n";
-        Eigen::IOFormat dispFormat;
-        if (Settings::fullPrecisionASCIIWriting){
-            dispFormat = {Eigen::FullPrecision, Eigen::DontAlignCols, " "
-                , "\n", "", " 0.0"};
-        } else{
-            dispFormat = {Eigen::StreamPrecision, Eigen::DontAlignCols, " ", "\n"
-                , "", " 0.0"};
-        }
-        Eigen::Matrix<Settings::precision,Eigen::Dynamic,2> reshapedDisp 
-            = disp.reshaped<Eigen::RowMajor>(Eigen::AutoSize,2);
-        resultsFile << reshapedDisp(flattenedNodesIDEl,Eigen::placeholders::all)
-            .format(dispFormat) << '\n';
-
-        SigmaMat sigmaM (4*mesh.nElements, stressComp);
-        computeStressField(mesh, reshapedDisp, sigmaM);
-        Eigen::IOFormat stressFormat;
-        if (Settings::fullPrecisionASCIIWriting){
-            stressFormat = {Eigen::FullPrecision, Eigen::DontAlignCols, ""
-                , "\n", "", ""};
-        } else{
-            stressFormat = {Eigen::StreamPrecision, Eigen::DontAlignCols, ""
-                , "\n", "", ""};
-        }
-        resultsFile << "\nSCALARS S11 float\nLOOKUP_TABLE default\n";
-        resultsFile << sigmaM(Eigen::placeholders::all,0).format(stressFormat)
-            << '\n';
-        resultsFile << "\nSCALARS S22 float\nLOOKUP_TABLE default\n";
-        resultsFile << sigmaM(Eigen::placeholders::all,1).format(stressFormat)
-            << '\n';
-        resultsFile << "\nSCALARS S12 float\nLOOKUP_TABLE default\n";
-        resultsFile << sigmaM(Eigen::placeholders::all,2).format(stressFormat)
-            << '\n';
-
-        resultsFile.close();
-        std::cout << "Done!\n\n";
-    }
-
-    void exportResultsBinary(const Mesh& mesh, const DispEigen& disp){
-        std::cout << "Writing ./'VTK RESULTS'/results.bin.vtk to visualize the "
-            << "output fields (UNAVERAGED) in Paraview...\n";
-        std::ofstream file("./VTK RESULTS/results.bin.vtk", std::ios::binary);
+        std::ofstream file(resultsPath, std::ios::binary);
         if (!file) throw std::runtime_error("Unable to open VTK output file.");
 
         // Increasing file buffer to 1MB to reduce OS writing calls
@@ -97,13 +19,19 @@ namespace Export{
 
         file << "# vtk DataFile Version 3.0\nFEA Unaveraged\nBINARY\nDATASET UNSTRUCTURED_GRID\n\n";
 
+        // current time-instant field
+        file << "FIELD FieldData 1\nTIME 1 1 double\n";
+        Settings::precision timeBigEndian {swapEndian(time)};
+        file.write(reinterpret_cast<const char*>(&timeBigEndian)
+            , sizeof(Settings::precision));
+
         const int nPoints = mesh.nElements * Settings::nNodesEl;
 
         // string used to declare the floating point precision
         std::string_view floatingTypeStr = (isDouble(Settings::sqrt3) 
             ? "double" : "float");
 
-        file << "POINTS " << nPoints << ' ' << floatingTypeStr << '\n';
+        file << "\n\nPOINTS " << nPoints << ' ' << floatingTypeStr << '\n';
         std::vector<Settings::precision> pointData(nPoints * 3);
         
         int idx = 0;
@@ -183,6 +111,27 @@ namespace Export{
         writeStressScalar("S11", 0);
         writeStressScalar("S22", 1);
         writeStressScalar("S12", 2);
+    }
+
+    void generateFileName(std::string& fileName, const int counterVTK){
+        using namespace std::string_literals;
+        std::stringstream int2str;
+        std::string counterStr {""s};
+        int insertStrIndx {};
+        if (counterVTK < 10){
+            fileName = "results00.vtk"s;
+            insertStrIndx = 9;
+        }else if (counterVTK < 100){
+            fileName = "results0.vtk"s;
+            insertStrIndx = 8;
+        }else{
+            // assuming we're not going to generate more than 999 files
+            fileName = "results.vtk"s;
+            insertStrIndx = 7;
+        }
+        int2str << counterVTK;
+        int2str >> counterStr;
+        fileName.insert(insertStrIndx, counterStr);
     }
 
     void computeStressField(const Mesh& mesh, DispMatEigen& dispMat

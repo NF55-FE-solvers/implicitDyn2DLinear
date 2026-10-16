@@ -1,5 +1,6 @@
 #include <iostream>
 #include <fstream>
+#include <algorithm>
 #include "Eigen/Eigen"
 #include "Eigen/PardisoSupport"
 #include "Mesh.h"
@@ -84,7 +85,7 @@ int main(){
                 if (e > numEl2Message){
                     std::cout << "Sparse global mass & stiffness matrix " 
                         << "computation... " << numEl2Message/numEl1perc
-                        *2.0f << "%\n";
+                        *5.0f << "%\n";
                     numEl2Message += numEl1perc;
                 }
             }
@@ -118,7 +119,7 @@ int main(){
         int nUnknownDisp {lastNanIndx+1};
         int nKnownDisp {mesh.nDof - nUnknownDisp};
 
-        ndofVectf dispNew, velOld, velNew, accOld, accNew;
+        ndofVectf dispNew, velOld, velNew, accOld, accNew, dispReord;
 
         Settings::solverType solver;
         
@@ -129,41 +130,79 @@ int main(){
 
         Settings::precision time {Settings::t0 + Settings::dt};
         Settings::precision tSaveVTK {Settings::t0 + Settings::dtSaveVTK};
+        int countVTK {0};
 
         clearPriorResults();
 
+        constexpr const Settings::precision dt2 {Settings::dt*Settings::dt};
+        constexpr const Settings::precision coeffM {1.0/(Settings::beta*dt2)};
+        Eigen::SparseMatrix<Settings::precision> effStiffMat 
+            (nUnknownDisp,nUnknownDisp);
+        effStiffMat = coeffM*mG.block(0,0,nUnknownDisp,nUnknownDisp) 
+            + kG.block(0,0,nUnknownDisp,nUnknownDisp);
+        solver.compute(effStiffMat);
+        if(solver.info()!=Eigen::Success) {
+            throw "Linear solver failed decomposition.";
+        }
+
+        Eigen::Vector<Settings::precision,Eigen::Dynamic> rhsEquation;
+        constexpr const Settings::precision coeffAcc {0.5-Settings::beta};
+        constexpr const Settings::precision coeffVel0 {Settings::gamma
+            /(Settings::beta*Settings::dt)};
+        constexpr const Settings::precision coeffVel1 {1.0-Settings::gamma
+            /Settings::beta};
+        constexpr const Settings::precision coeffVel2 {1.0-0.5*Settings::gamma
+            /Settings::beta};
+        
+
         while (time < (Settings::tFinal + Settings::dt)){
+            bc.setBcTimeDependent(force,mapDof,time,nUnknownDisp);
+
+            rhsEquation.noalias() = force.head(nUnknownDisp);
+            rhsEquation.noalias() += coeffM*mG.topLeftCorner(nUnknownDisp
+                ,nUnknownDisp)*(dispOld.head(nUnknownDisp) 
+                + Settings::dt*velOld.head(nUnknownDisp) 
+                + coeffAcc*dt2*accOld.head(nUnknownDisp));
+            rhsEquation.noalias() += coeffM*mG.topRightCorner(nUnknownDisp
+                ,nKnownDisp)*(-dispNew.tail(nKnownDisp) 
+                + dispOld.tail(nKnownDisp) 
+                + Settings::dt*velOld.tail(nKnownDisp) 
+                + coeffAcc*dt2*accOld.tail(nKnownDisp));
+            rhsEquation.noalias() -= kG.topRightCorner(nUnknownDisp,nKnownDisp)
+                *dispNew.tail(nKnownDisp);
             
+            dispNew.head(nUnknownDisp) = solver.solve(rhsEquation);
+            if(solver.info()!=Eigen::Success){
+                throw "Linear solver failed solving(1).";
+            }
+
+            velNew.head(nUnknownDisp).noalias() = coeffVel0
+                *(dispNew.head(nUnknownDisp)-dispOld.head(nUnknownDisp))
+                + coeffVel1*velOld.head(nUnknownDisp) + coeffVel2*Settings::dt
+                *accOld.head(nUnknownDisp);
+            
+            accNew.head(nUnknownDisp).noalias() = coeffM
+                *(dispNew.head(nUnknownDisp) - dispOld.head(nUnknownDisp) 
+                - velOld.head(nUnknownDisp)*Settings::dt - coeffAcc
+                *dt2*accOld.head(nUnknownDisp));
+
+            if (time > tSaveVTK){
+                dispReord = mapDofMat * dispOld;
+                Export::exportResultsBinary(mesh, dispReord, countVTK, time);
+                tSaveVTK += Settings::dtSaveVTK;
+                ++countVTK;
+                std::cout << "Time instant " << time << " / " 
+                    << Settings::tFinal << " s saved!\n";
+            }
+
+            std::swap(dispOld, dispNew);
+            std::swap(velOld, velNew);
+            std::swap(accOld, accNew);
 
             time += Settings::dt;
         }
 
-        // 6-Change the Bc.cpp(+h) so to be able to update the BC/loads in time
-        // 7-Solve for the current time instant
-        // 8-Write the results in a .vtk file
-        // 9-Update the variables with std::swap(old,new) + advance in time
-
-
-        solver.compute(kG.block(0,0,lastNanIndx+1,lastNanIndx+1));
-        if(solver.info()!=Eigen::Success) {
-            throw "Linear solver failed decomposition(1).";
-        }
-        Eigen::Vector<Settings::precision,Eigen::Dynamic> rhsDispSol = 
-            force.head(nUnknownDisp);
-        rhsDispSol.noalias() -= kG.topRightCorner(nUnknownDisp,nKnownDisp)
-            *dispOld.tail(nKnownDisp);
-        dispOld.head(nUnknownDisp) = solver.solve(rhsDispSol);
-        if(solver.info()!=Eigen::Success) {
-            throw "Linear solver failed solving(1).";
-        }
-        std::cout << "Unknown nodal displacements computed successfully!"
-            << "\n\n";
-        dispOld = mapDofMat * dispOld;
-
-        //-----Exporting the results
-        if (Settings::exportBinaryVTK) Export::exportResultsBinary(mesh, dispOld);
-        else Export::exportResultsASCII(mesh, dispOld);
-        
+        std::cout << "\nResults saved in " << Settings::resultsDirName << '\n';
         //timer.stop();
         //std::cout << "Elapsed: " << std::setprecision(10) 
         //    << timer.getDurationMicro() << " micro sec.\n";

@@ -3,6 +3,7 @@
 
 #include <iostream>
 #include <fstream>
+#include <sstream>
 #include "Eigen/Core"
 #include "Mesh.h"
 #include "settings.h"
@@ -39,10 +40,11 @@ namespace Export{
         {0.0, 1.0, 1.0, 0.0}
     };
 
-    void exportResultsASCII(const Mesh& mesh, const DispEigen& disp);
-    void exportResultsBinary(const Mesh& mesh, const DispEigen& disp);
+    void exportResultsBinary(const Mesh& mesh, const DispEigen& disp
+        , const int counterVTK, const Settings::precision time);
     void computeStressField(const Mesh& mesh, DispMatEigen& dispMat
             , SigmaMat& sigmaM);
+    void generateFileName(std::string& fileName, const int counterVTK);
 
     
     // Little-endian to Big-endian (vtk legacy) conversion, template function

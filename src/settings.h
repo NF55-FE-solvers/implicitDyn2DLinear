@@ -2,11 +2,12 @@
 #define SETTINGS_H
 
 #include <limits>
-#include <Eigen/Core>
 #include <filesystem>
+#include "Eigen/Eigen"
+#include "Eigen/PardisoSupport"
 
 namespace Settings{
-    // main aliases
+    // some aliases
     using precision = double; // for computations (float or double), leave
     // double when using Intel MKL Pardiso solvers
     // Suggested for square positive definite system:
@@ -14,6 +15,9 @@ namespace Settings{
     // For large problems (over 1-2M dof) -> ConjugateGradient (iterative)
     using solverType = Eigen::PardisoLLT<Eigen::SparseMatrix<precision>>;
     using fPath = std::filesystem::path;
+
+    // IC options
+    constexpr const bool importICFromStatic {false};
 
     // for time integration
     constexpr const precision t0 {0.0};
@@ -25,13 +29,11 @@ namespace Settings{
     constexpr const precision beta {0.25}; // const. of Newmark-beta method
     
     // for results and other things
-    constexpr const bool exportBinaryVTK{true}; // binary is much faster
-    constexpr const bool fullPrecisionASCIIWriting {false}; // suggested false
+    // the vtk ascii option was left unused after seeing the performance diff.
     constexpr const double memoryLimitMB {3000.0}; // avoiding dynamic 
     // allocation errors due to lack of heap memory availability
-    fPath expectedRootProj {"implicitDyn2DLinear"};
-    fPath resultsDirName {"./VTK RESULTS"};
-
+    inline fPath expectedRootProj {"implicitDyn2DLinear"};
+    inline fPath resultsDirName {"./VTK RESULTS"};
 
     // Useful constants:
     constexpr const double multiplierMemory4Solving {2.5}; // the multiplier of 
