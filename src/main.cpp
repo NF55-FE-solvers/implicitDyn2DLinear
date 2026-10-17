@@ -7,7 +7,6 @@
 #include "import.h"
 #include "settings.h"
 #include "TimerHighRes.h"
-#include "estimateMemoryUsage.h"
 #include "material.h"
 #include "Bc.h"
 #include "rearrangeDof.h"
@@ -32,14 +31,6 @@ int main(){
         //-----Importing mesh and boundary conditions
         importMesh(mesh, bc);
         std::cout << "Problem size: " << mesh.nDof << " d.o.f.\n";
-        double estimatedMemoryUsageMB {estimateMemUsageMB(mesh.nDof
-            , mesh.nElements)};
-        std::cout << "Esitmated Memory usage (before solving phase): " 
-            << estimatedMemoryUsageMB/Settings::multiplierMemory4Solving 
-            << " MB\nEstimated MAX Memory usage: " << estimatedMemoryUsageMB 
-            << " MB\n\n";
-        if (estimatedMemoryUsageMB > Settings::memoryLimitMB)
-            throw "Estimated memory usage > memory usage limit set in settings";
 
         //-----(global mass matrix + global stiffness matrix) computation
         Eigen::SparseMatrix<Settings::precision> kG (mesh.nDof, mesh.nDof);

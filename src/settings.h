@@ -30,8 +30,6 @@ namespace Settings{
     
     // for results and other things
     // the vtk ascii option was left unused after seeing the performance diff.
-    constexpr const double memoryLimitMB {3000.0}; // avoiding dynamic 
-    // allocation errors due to lack of heap memory availability
     inline fPath expectedRootProj {"implicitDyn2DLinear"};
     inline fPath resultsDirName {"./VTK RESULTS"};
 
