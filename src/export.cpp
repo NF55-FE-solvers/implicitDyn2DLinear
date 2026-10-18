@@ -111,6 +111,7 @@ namespace Export{
         writeStressScalar("S11", 0);
         writeStressScalar("S22", 1);
         writeStressScalar("S12", 2);
+        file.close();
     }
 
     void generateFileName(std::string& fileName, const int counterVTK){

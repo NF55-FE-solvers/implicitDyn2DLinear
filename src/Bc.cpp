@@ -26,7 +26,7 @@ void Bc::setBcTimeDependent(Bc::ndofVectf& dispNewOrForce
 {
     // creation of custom amplitude
     constexpr const Settings::precision FAmp {-20.0};
-    Settings::precision Fcurrent {FAmp*time/(Settings::tFinal-Settings::t0)}; 
+    Settings::precision Fcurrent {FAmp*time/(Settings::tFinal-Settings::t0)};
     
     // use a bc or alternatively create one only for the time dependent bcs
     const auto chosenBc {Fy};
