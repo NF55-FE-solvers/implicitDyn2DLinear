@@ -6,4 +6,5 @@ build/
 # file types
 *.vtk
 MESH/*.dat
+MESH/*.inp
 !MESH/SETS/*.dat

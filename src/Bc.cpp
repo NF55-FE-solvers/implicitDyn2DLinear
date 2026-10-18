@@ -33,7 +33,7 @@ void Bc::setBcTimeDependent(Bc::ndofVectf& dispNewOrForce
 
     if (bcs[chosenBc].empty()) throw "The time dependent boundary condition selected is empty - Bc.cpp";
 
-    // making sure the elements are sorted (see comments below)
+    // making sure the elements of bcs[chosenBc] are sorted (see comments below)
     using sizT = std::size_t;
     if (bcs[chosenBc].size() > 1){
         bool isSorted {true};

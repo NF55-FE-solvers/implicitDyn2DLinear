@@ -127,6 +127,14 @@ int main(){
 
         constexpr const Settings::precision dt2 {Settings::dt*Settings::dt};
         constexpr const Settings::precision coeffM {1.0/(Settings::beta*dt2)};
+        constexpr const Settings::precision coeffAcc {0.5-Settings::beta};
+        constexpr const Settings::precision coeffVel0 {Settings::gamma
+            /(Settings::beta*Settings::dt)};
+        constexpr const Settings::precision coeffVel1 {1.0-Settings::gamma
+            /Settings::beta};
+        constexpr const Settings::precision coeffVel2 {1.0-0.5*Settings::gamma
+            /Settings::beta};
+        
         Eigen::SparseMatrix<Settings::precision> effStiffMat 
             (nUnknownDisp,nUnknownDisp);
         effStiffMat = coeffM*mG.block(0,0,nUnknownDisp,nUnknownDisp) 
@@ -137,16 +145,8 @@ int main(){
         }
 
         Eigen::Vector<Settings::precision,Eigen::Dynamic> rhsEquation;
-        constexpr const Settings::precision coeffAcc {0.5-Settings::beta};
-        constexpr const Settings::precision coeffVel0 {Settings::gamma
-            /(Settings::beta*Settings::dt)};
-        constexpr const Settings::precision coeffVel1 {1.0-Settings::gamma
-            /Settings::beta};
-        constexpr const Settings::precision coeffVel2 {1.0-0.5*Settings::gamma
-            /Settings::beta};
-        
 
-        while (time < (Settings::tFinal + Settings::dt)){
+        while (time < (Settings::tFinal + Settings::dt/2.0)){
             bc.setBcTimeDependent(force,mapDof,time,nUnknownDisp);
 
             rhsEquation.noalias() = force.head(nUnknownDisp);
@@ -177,8 +177,8 @@ int main(){
                 - velOld.head(nUnknownDisp)*Settings::dt - coeffAcc
                 *dt2*accOld.head(nUnknownDisp));
 
-            if (time > tSaveVTK){
-                dispReord = mapDofMat * dispOld;
+            if (time > (tSaveVTK-Settings::dt/2.0)){
+                dispReord = mapDofMat * dispNew;
                 Export::exportResultsBinary(mesh, dispReord, countVTK, time);
                 tSaveVTK += Settings::dtSaveVTK;
                 ++countVTK;
@@ -194,6 +194,8 @@ int main(){
         }
 
         std::cout << "\nResults saved in " << Settings::resultsDirName << '\n';
+        std::cout << "To display time in paraview: filter -> python annotation"
+            << " -> 'Time: %.3e' % (input.FieldData['TIME'][0])\n";
         //timer.stop();
         //std::cout << "Elapsed: " << std::setprecision(10) 
         //    << timer.getDurationMicro() << " micro sec.\n";
