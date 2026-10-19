@@ -47,7 +47,6 @@ void Bc::setBcTimeDependent(Bc::ndofVectf& dispNewOrForce
             std::sort(bcs[chosenBc].begin(), bcs[chosenBc].end());
         }
     }
-
     // here using a more "complex" algorithm, but should be *faster than: 
     // force(mapDof) = force; 
     // force(bcs[chosenBc]) = Fcurrent; 

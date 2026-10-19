@@ -32,6 +32,7 @@ namespace Settings{
     // the vtk ascii option was left unused after seeing the performance diff.
     inline fPath expectedRootProj {"implicitDyn2DLinear"};
     inline fPath resultsDirName {"./VTK RESULTS"};
+    inline fPath dispFromStaticPath {"./static2dynamic/nodalDispVect"};
 
     // Useful constants:
     constexpr const double multiplierMemory4Solving {2.5}; // the multiplier of 

@@ -111,10 +111,8 @@ int main(){
         int nKnownDisp {mesh.nDof - nUnknownDisp};
 
         ndofVectf dispNew, velOld, velNew, accOld, accNew, dispReord;
-
-        Settings::solverType solver;
         
-        Ic::setIC(dispOld, velOld, accOld, force, mG, kG, solver, nUnknownDisp);
+        Ic::setIC(dispOld, velOld, accOld, force, mG, kG, nUnknownDisp, mapDof);
         dispNew = dispOld;
         velNew  = velOld;
         accNew  = accOld;
@@ -139,6 +137,7 @@ int main(){
             (nUnknownDisp,nUnknownDisp);
         effStiffMat = coeffM*mG.block(0,0,nUnknownDisp,nUnknownDisp) 
             + kG.block(0,0,nUnknownDisp,nUnknownDisp);
+        Settings::solverType solver;
         solver.compute(effStiffMat);
         if(solver.info()!=Eigen::Success) {
             throw "Linear solver failed decomposition.";
@@ -147,7 +146,9 @@ int main(){
         Eigen::Vector<Settings::precision,Eigen::Dynamic> rhsEquation;
 
         while (time < (Settings::tFinal + Settings::dt/2.0)){
-            bc.setBcTimeDependent(force,mapDof,time,nUnknownDisp);
+            if (!Settings::importICFromStatic){
+                bc.setBcTimeDependent(force,mapDof,time,nUnknownDisp);
+            }
 
             rhsEquation.noalias() = force.head(nUnknownDisp);
             rhsEquation.noalias() += coeffM*mG.topLeftCorner(nUnknownDisp
