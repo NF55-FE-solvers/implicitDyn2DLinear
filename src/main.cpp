@@ -126,12 +126,6 @@ int main(){
         constexpr const Settings::precision dt2 {Settings::dt*Settings::dt};
         constexpr const Settings::precision coeffM {1.0/(Settings::beta*dt2)};
         constexpr const Settings::precision coeffAcc {0.5-Settings::beta};
-        constexpr const Settings::precision coeffVel0 {Settings::gamma
-            /(Settings::beta*Settings::dt)};
-        constexpr const Settings::precision coeffVel1 {1.0-Settings::gamma
-            /Settings::beta};
-        constexpr const Settings::precision coeffVel2 {1.0-0.5*Settings::gamma
-            /Settings::beta};
         
         Eigen::SparseMatrix<Settings::precision> effStiffMat 
             (nUnknownDisp,nUnknownDisp);
@@ -167,16 +161,15 @@ int main(){
             if(solver.info()!=Eigen::Success){
                 throw "Linear solver failed solving(1).";
             }
-
-            velNew.head(nUnknownDisp).noalias() = coeffVel0
-                *(dispNew.head(nUnknownDisp)-dispOld.head(nUnknownDisp))
-                + coeffVel1*velOld.head(nUnknownDisp) + coeffVel2*Settings::dt
-                *accOld.head(nUnknownDisp);
             
             accNew.head(nUnknownDisp).noalias() = coeffM
                 *(dispNew.head(nUnknownDisp) - dispOld.head(nUnknownDisp) 
                 - velOld.head(nUnknownDisp)*Settings::dt - coeffAcc
                 *dt2*accOld.head(nUnknownDisp));
+
+            velNew.head(nUnknownDisp).noalias() = velOld.head(nUnknownDisp)
+                + (1.0-Settings::gamma)*Settings::dt*accOld.head(nUnknownDisp)
+                + Settings::gamma*Settings::dt*accNew.head(nUnknownDisp);
 
             if (time > (tSaveVTK-Settings::dt/2.0)){
                 dispReord = mapDofMat * dispNew;
